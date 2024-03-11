@@ -1,39 +1,24 @@
-import requests
-import json
-with open("token.txt") as f:
-    token = f.read()
 
 
+import asyncio
 from aiogram import Bot, Dispatcher
-from aiogram.filters import Command
-from aiogram.types import Message
-
-# Создаем объекты бота и диспетчера
-bot = Bot(token=token)
-dp = Dispatcher()
-
-
-# Этот хэндлер будет срабатывать на команду "/start"
-@dp.message(Command(commands=["start"]))
-async def process_start_command(message: Message):
-    await message.answer('Привет!\nМеня зовут Эхо-бот!\nНапиши мне что-нибудь')
-
-
-# Этот хэндлер будет срабатывать на команду "/help"
-@dp.message(Command(commands=['help']))
-async def process_help_command(message: Message):
-    await message.answer(
-        'Напиши мне что-нибудь и в ответ '
-        'я пришлю тебе твое сообщение'
-    )
-
-
-# Этот хэндлер будет срабатывать на любые ваши текстовые сообщения,
-# кроме команд "/start" и "/help"
-@dp.message()
-async def send_echo(message: Message):
-    await message.reply(text=message.text)
+from handlers import other_handlers, user_handlers
+from config_data.config import load_config
+from keyboards.keyboards import set_main_menu
+async def main() -> None:
+    config = load_config()
+    # Создаем объекты бота и диспетчера
+    bot = Bot(token=config.tg_bot.token)
+    dp = Dispatcher()
+    await set_main_menu(bot)
+    # Регистриуем роутеры в диспетчере
+    dp.include_router(user_handlers.router)
+    dp.include_router(other_handlers.router)
+    # Пропускаем накопившиеся апдейты и запускаем polling
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
 
 
 if __name__ == '__main__':
-    dp.run_polling(bot)
+    asyncio.run(main())
+
